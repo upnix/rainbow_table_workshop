@@ -4,6 +4,20 @@ import ipywidgets as widgets
 
 search_direction = 'rtl'
 
+def bad_hash_reduce(hash_digest, salt, key_length, allowable_chars):
+    new_key = str()
+    i = 0
+    for c in hash_digest:
+        for digit_str in str(ord(c)):
+            if int(digit_str) < len(allowable_chars):
+                new_key += allowable_chars[int(digit_str)]
+            else:
+                new_key += random.choice(allowable_chars)
+        if len(new_key) >= key_length:
+            break
+        
+    return new_key[:key_length]
+
 def ts_targetHash_callback(button, rb, str_to_find, direction, int_widget, table_widget, status_Output):
 
     cur_str_to_find = str_to_find
@@ -83,7 +97,7 @@ def ts_table_blackout_callback(button, num_rows, html_table, table_widget):
 
 
 def ts_reset_callback(rb, text_widget, int_widget, blackout_button, search_button, table_widget, status_Output):
-    rb.display_table(table_widget)
+    rb.display_table(table_widget, 10)
     text_widget.value = ''
     int_widget.value = 0
     blackout_button.description='Turn on'
@@ -103,7 +117,7 @@ def ts_direction_callback(radio_widget, text_widget, int_widget):
     int_widget.value = 0
 
 # Make the Rainbow table
-rb = RainbowTable(ks_get_keyspace(), 5, 5)
+rb = RainbowTable(ks_get_keyspace(), 5, 10)
 
 table_widget = widgets.HTML()
 ts_status_Output = widgets.Output(layout={'border': '1px solid black'})
@@ -111,6 +125,7 @@ ts_status_Output = widgets.Output(layout={'border': '1px solid black'})
 
 
 ts_col_BoundedInt = widgets.BoundedIntText(value = 0, disabled=True)
+ts_col_BoundedInt.layout.width = '100px'
 
 ts_target_Text = widgets.Text(placeholder='Hash digest to find')
 
@@ -143,13 +158,14 @@ ts_reset_Button.on_click(lambda b: ts_reset_callback(
 
 
 def display_table_search():
+    table_layout = widgets.Layout(display = 'flex', border='1px solid black', align_items='center')
     display(widgets.HBox([
-        widgets.VBox([widgets.Label(value='Key/digest to start your search from'),ts_target_Text]),
-        widgets.VBox([widgets.Label(value='Reduce/Hash iterations'), ts_col_BoundedInt]),
+        widgets.VBox([widgets.Label(value='Key/digest to start your search from', style = dict(text_decoration='underline')),ts_target_Text], layout=table_layout),
+        widgets.VBox([widgets.Label(value='Reduce/Hash iterations', style = dict(text_decoration='underline')), ts_col_BoundedInt], layout=table_layout),
         widgets.VBox([
-            widgets.Label(value='Blackout center of table'),
-            ts_table_blackout_Button]),
-        widgets.VBox([ts_targetHash_Button, ts_reset_Button])
+            widgets.Label(value='Blackout center of table', style = dict(text_decoration='underline')),
+            ts_table_blackout_Button], layout = table_layout),
+        widgets.VBox([ts_targetHash_Button, ts_reset_Button], layout = table_layout)
         ]),
         ts_direction_Radio)
 
@@ -159,4 +175,26 @@ def display_rb_table():
         ts_status_Output]))
     
     # Display the Rainbow table
-    rb.display_table(table_widget)
+    rb.display_table(table_widget, 10)
+
+
+def display_bad_reduction_table():
+    bad_rb = RainbowTable(ks_get_keyspace(), 5, 10, bad_hash_reduce)
+    bad_table_widget = widgets.HTML()
+    bad_rb.display_table(bad_table_widget, 10)
+    key_digest_dup = dict()
+    row_count = 0
+    for row in bad_rb.table:
+        chain_pair = 0
+        for key, _ in row:
+            if key in key_digest_dup:
+                bad_rb.html_table.highlight([row_count, 4*chain_pair])
+                i, k = key_digest_dup[key]
+                bad_rb.html_table.highlight([i,4*k])
+            else:
+                key_digest_dup[key] = (row_count,chain_pair)
+            chain_pair += 1
+        row_count += 1
+    bad_table_widget.value = bad_rb.html_table.generate_table()
+    
+    display(bad_table_widget)

@@ -44,19 +44,70 @@ def descriptive_time(time_in_seconds):
 
 # A reduction function
 def hash_reduce(hash_digest, salt, key_length, allowable_chars):
+    # The hash string is converted into its underlying 1s and 0s.
+    # `hash_in_binary` is where that information will be stored.
     hash_in_binary = str()
 
+    # Go through each character of the hash digest string, converting each to
+    # its 8-bit binary representation, and appending it to one long binary
+    # string (`hash_in_binary`)
     for c in hash_digest:
+        # * `ord(c)` converts the string representation of one character in the
+        # hash digest into a Unicode character number.
+        # 
+        # * `bin(...)[2:]` will convert that number into binary, taking off the
+        # first two characters which aren't part of the actual binary number
+        # 
+        # `.zfill(8)` will ensure the binary string that results is 8 digits
+        # long, as it fills any empty places after the conversion of the
+        # character to binary with 0s.
         hash_in_binary += bin(ord(c))[2:].zfill(8)
-        
+
+    # We're breaking the long binary string into semi-evenly-sized chunks. The
+    # chunk size is based on the target key length for the plain text key we've
+    # been asked to generate.
     binary_chunks = int(len(hash_in_binary)/key_length)
+    
+    # `key_from_hash` is the string where we'll be building the plain text key
     key_from_hash = str()
+    
+    # We use the binary representation of the hash digest (which we built
+    # above) to select each character for the plain text key generated.
+    
+    # For each character position the plain text key must have, figure out
+    # slices of the the binary-represented digest to be used to select a valid
+    # character.
     for i in range(0, key_length):
+        # The left bound of the `hash_in_binary` binary string that we're going
+        # to draw from.
         left_bound = i*binary_chunks
+        
+        # The right bound
         right_bound = (i+1)*binary_chunks
+        
+        # If we're generating the last character of the plain text key, use
+        # whatever binary digits are between `left_bound` and the end of the
+        # hash digest binary representation. This is to compensate for binary
+        # strings that can't be evenly divided by the desired plain text key
+        # length.
         if i == (key_length-1):
             right_bound = len(hash_in_binary)
-        list_pos = int(hash_in_binary[left_bound:right_bound], 2)%len(allowable_chars)
+        
+        # `int(...)` takes the slice of binary we've pulled out, and converts
+        # in back into the recognizable base-10 representation.
+        # 
+        # `%len(allowable_chars)` - `%` is the modulo operation, which is best
+        # explained elsewhere. What's happening here is we're making sure we're
+        # generating a list position (`list_pos`) for `allowable_chars` that is
+        # valid. For example, if there are only 10 allowable characters we
+        # can't be trying to reference the 23rd character of the list.
+        list_pos = (
+            int(hash_in_binary[left_bound:right_bound], 2) + salt
+        ) % len(allowable_chars)
+
+        
+        # Using the list position generated above, select an allowable char
+        # and add it to the plain text key being generated.
         key_from_hash += allowable_chars[list_pos]
         
     return key_from_hash

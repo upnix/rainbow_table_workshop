@@ -224,15 +224,8 @@ resetSearch_callback(rvPIN_digest_TextWidget,
 
 
 def hash_display():
-    hash_TabWidget = widgets.Tab()
-    hash_TabWidget.children = [
-        hashKey_layout_VBoxwidget,
-        rvPIN_layout
-    ]
+    display(hashKey_layout_VBoxwidget)
 
-    hash_TabWidget.titles = [
-        'Hash text',
-        'Reverse PIN hash'
-    ]
-
-    display(hash_TabWidget)
+    
+def reverse_PIN_display():
+    display(rvPIN_layout)
