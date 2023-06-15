@@ -43,7 +43,8 @@ def descriptive_time(time_in_seconds):
 
 
 # A reduction function
-def hash_reduce(hash_digest, salt, key_length, allowable_chars):
+def hash_reduce(hash_digest, salt, key_length, allowable_chars, allow_smaller_keys=False):
+        
     # The hash string is converted into its underlying 1s and 0s.
     # `hash_in_binary` is where that information will be stored.
     hash_in_binary = str()
@@ -62,11 +63,45 @@ def hash_reduce(hash_digest, salt, key_length, allowable_chars):
         # long, as it fills any empty places after the conversion of the
         # character to binary with 0s.
         hash_in_binary += bin(ord(c))[2:].zfill(8)
+    
+    # If the defined key space allows for keys less than the full `key_length`
+    # then we need to make sure it's possible for hashes to reduce to those
+    # shorter key sizes. This is what happens here.
+    if allow_smaller_keys:
+        # This gives us a list of weights for each length of possible key,
+        # ensuring a length selection has a weight equal to how many keys of
+        # that length exist in the key space.
+        relative_weights = key_length_weights(len(allowable_chars), key_length)
+        
+        # I got this idea from ChatGPT. I asked: In Python, how can I
+        # deterministically assign a weighted number between 1 and 5 to a
+        # string of arbitrary size?
+        weighted_list = list()
+        for i in range(1, key_length+1):
+            # `key_length_weights` calculates the percent of keys in the key
+            # space for each possible length of key. Here, we're making a
+            # (potentially huge) list of numbers, 1 -> *max key length*, with
+            # the each number repeated to match the number's corresponding
+            # percentage. So, [1, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4]
+            # (I just made this up). 
+            weighted_list += [i]*relative_weights[i-1]
+        
+        # The binary representation of the hash we turn into a decimal number
+        hash_value = int(hash_in_binary, 16)
+        
+        # Take `hash_value` mod the length of `weighted_list`, as use the
+        # result to select a number of `weighted_list`. This will be the length
+        # of the key we generate when we encounter this particular hash.
+        key_len = weighted_list[hash_value % len(weighted_list)]
+
+    else:
+        # We're just generating a full-length key.
+        key_len = key_length
 
     # We're breaking the long binary string into semi-evenly-sized chunks. The
     # chunk size is based on the target key length for the plain text key we've
     # been asked to generate.
-    binary_chunks = int(len(hash_in_binary)/key_length)
+    binary_chunks = int(len(hash_in_binary)/key_len)
     
     # `key_from_hash` is the string where we'll be building the plain text key
     key_from_hash = str()
@@ -77,7 +112,7 @@ def hash_reduce(hash_digest, salt, key_length, allowable_chars):
     # For each character position the plain text key must have, figure out
     # slices of the the binary-represented digest to be used to select a valid
     # character.
-    for i in range(0, key_length):
+    for i in range(0, key_len):
         # The left bound of the `hash_in_binary` binary string that we're going
         # to draw from.
         left_bound = i*binary_chunks
@@ -90,7 +125,7 @@ def hash_reduce(hash_digest, salt, key_length, allowable_chars):
         # hash digest binary representation. This is to compensate for binary
         # strings that can't be evenly divided by the desired plain text key
         # length.
-        if i == (key_length-1):
+        if i == (key_len-1):
             right_bound = len(hash_in_binary)
         
         # `int(...)` takes the slice of binary we've pulled out, and converts
@@ -111,6 +146,26 @@ def hash_reduce(hash_digest, salt, key_length, allowable_chars):
         key_from_hash += allowable_chars[list_pos]
         
     return key_from_hash
+
+#def key_length_selection(allowable_char_num, max_key_length):
+#    keyspace_size = sum([allowable_char_num**i for i in range(1, max_key_length+1)])
+#    possible_key_lengths = [i for i in range(1, max_key_length+1)]
+
+    #weight = list()
+    #for i in range(1, max_key_length+1):
+    #    weight.append((allowable_char_num**i/keyspace_size)*100)
+        
+    #return random.choices(possible_key_lengths, weight)[0]
+
+def key_length_weights(allowable_char_num, max_key_length):
+    keyspace_size = sum([allowable_char_num**i for i in range(1, max_key_length+1)])
+
+    weight = list()
+    for i in range(1, max_key_length+1):
+        weight.append(int((allowable_char_num**i/keyspace_size)*100))
+        
+    return weight
+
 
 class HashSearch:
     HASH_ALGORITHMS = list(['md5', 'sha1', 'sha256', 'sha512', 'shake_128', 'blake2b', 'Shorty hash'])
@@ -398,17 +453,27 @@ class KeySpace:
             return -1
         
         key_list = list()
-        
-        key_length = self.key_size
-        
-        # TODO: The problem here is that keys of shorter lengths don't
-        # represent an equal portion of the key space.
+                
         for _ in range(0, num):
             key = str()
-            if self.allow_smaller_keys:
-                key_length = random.randint(1, self.key_size)
-    
-            for _ in range(0, key_length):
+            if not self.allow_smaller_keys:
+                generated_key_length = self.key_size
+            else:
+                relative_weights = key_length_weights(len(self.allowable_chars), self.key_size)
+                possible_key_lengths = [i for i in range(1, self.key_size+1)]
+                generated_key_length = random.choices(possible_key_lengths, relative_weights)[0]
+
+                #generated_key_length = key_length_selection(len(self.allowable_chars), self.key_size)
+                #total_keys = self.size()
+                #possible_key_lengths = [i for i in range(1, self.key_size+1)]
+                #weight = list()
+                #for i in range(1, self.key_size+1):
+                #    weight.append((self.key_size**i/total_keys)*100)
+#
+                #generated_key_length = random.choices(possible_key_lengths, weight)[0]
+
+
+            for _ in range(0, generated_key_length):
                 key += random.choice(self.allowable_chars)
                 
             key_list.append(key)
@@ -445,7 +510,7 @@ class RainbowTable:
         self.chain_pairs = chain_pairs
         self.table_rows = table_rows
         
-        self.reduction_func = lambda hd: reduction_func(hd, 0, keyspace.key_size, keyspace.allowable_chars)
+        self.reduction_func = lambda hd: reduction_func(hd, 0, keyspace.key_size, keyspace.allowable_chars, keyspace.allow_smaller_keys)
         self.hash_func = hash_func
         
         self.table = list()

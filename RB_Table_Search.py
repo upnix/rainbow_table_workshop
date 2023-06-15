@@ -1,12 +1,12 @@
 from RainbowTables import RainbowTable
 from Key_Space_Widgets import ks_get_keyspace
 import ipywidgets as widgets
+import random
 
 search_direction = 'rtl'
 
-def bad_hash_reduce(hash_digest, salt, key_length, allowable_chars):
+def bad_hash_reduce(hash_digest, salt, key_length, allowable_chars, allow_smaller_keys=False):
     new_key = str()
-    i = 0
     for c in hash_digest:
         for digit_str in str(ord(c)):
             if int(digit_str) < len(allowable_chars):

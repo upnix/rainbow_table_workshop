@@ -13,7 +13,7 @@ def rbt_hashAlgo_callback(hash_str, key, text_widget):
     text_widget.value = hash_func(key)
     
 def rbt_reduceKey_callback(digest, keyspace, text_widget):
-    text_widget.value = hash_reduce(digest, 0, keyspace.key_size, keyspace.allowable_chars)
+    text_widget.value = hash_reduce(digest, 0, keyspace.key_size, keyspace.allowable_chars, keyspace.allow_smaller_keys)
 
 common_layout_width = '200px'
     
