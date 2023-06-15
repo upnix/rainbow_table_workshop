@@ -114,13 +114,16 @@ def hash_reduce(hash_digest, salt, key_length, allowable_chars):
 
 class HashSearch:
     HASH_ALGORITHMS = list(['md5', 'sha1', 'sha256', 'sha512', 'shake_128', 'blake2b', 'Shorty hash'])
-    key_hash_dict = dict()
+    
     
     def __init__(self, keyspace, hash_algorithm):
         self.keyspace = keyspace
         self.hash_algorithm = hash_algorithm
+
         # This was a trick I found here: https://stackoverflow.com/a/28766809
         self.search_keyspace = self._instance_search_keyspace
+        
+        self.key_hash_dict = dict()
     
     def save_hashed_keyspace(self, size=0, force=False):
         # Don't do it if...
@@ -132,6 +135,7 @@ class HashSearch:
 
         
         hash_algo = HashSearch.get_hash_func(self.hash_algorithm)
+        
         
         self.key_hash_dict.clear()
         
@@ -233,6 +237,7 @@ class KeySpace:
     
     def __init__(self, key_size, allowable_characters, allow_smaller_keys):
         self.key_size = key_size
+        self.original_allowed_chars = allowable_characters
         
         # Rebuild the passed 'allowable_characters' list, looking for any items
         # from 'PREBUILT_CHAR_LIST'
@@ -244,6 +249,7 @@ class KeySpace:
                     KeySpace.expand_prebuilt_char(e))
             else:
                 self.allowable_chars.append(e)
+        # This is to remove any duplicates
         self.allowable_chars = list(set(self.allowable_chars))
         
         self.allow_smaller_keys = allow_smaller_keys
@@ -333,8 +339,6 @@ class KeySpace:
                 break
 
         if not found_error:
-            print("You're good to go! This key should exist in your " +
-                  "defined key space!")
             return 1
         else:
             return -1

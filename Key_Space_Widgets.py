@@ -206,18 +206,15 @@ checkKey_tab_layout_HBoxWidget = widgets.HBox([
 def ks_display():
     # Assemble the previous layouts into a tabbed box
 
-    keyspace_TabWidget = widgets.Tab()
+    keyspace_TabWidget = widgets.Tab(children = [
+         ks_tab_layout_VBoxWidget,
+         keyGen_tab_layout_VBoxWidget,
+         checkKey_tab_layout_HBoxWidget]
+    )
 
-    keyspace_TabWidget.children = [
-        ks_tab_layout_VBoxWidget,
-        keyGen_tab_layout_VBoxWidget,
-        checkKey_tab_layout_HBoxWidget
-    ]
-
-    keyspace_TabWidget.titles = [
-        'Define the key space',
-        'Generate keys',
-        'Check for a key']
+    keyspace_TabWidget.set_title(0, 'Define the key space')
+    keyspace_TabWidget.set_title(1, 'Generate keys')
+    keyspace_TabWidget.set_title(2, 'Check for a key')
 
     display(keyspace_TabWidget)
     print("Your defined key space:")

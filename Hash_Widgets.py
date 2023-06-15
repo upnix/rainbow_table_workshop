@@ -1,5 +1,6 @@
 import ipywidgets as widgets
 from RainbowTables import HashSearch
+import time
 
 
 def hashKey_apply_callback(key, hash_algorithm,
@@ -30,10 +31,27 @@ def print_table_row(row_data, widths, output_widget, header=False):
     
     for i in range(0, len(row_data)):
         cell = widgets.Output(layout={'border': '1px solid black', 'width': f'{widths[i]}'})
-        cell.append_stdout(row_data[i])
+        style = """
+        <style>
+            .output_wrapper .output {
+                white-space: pre-wrap;
+            }
+        </style>
+        """
+        with cell:
+            display(widgets.HTML(style))
+            
+            if isinstance(row_data[i], widgets.Widget):
+                display(row_data[i])
+            else:
+                print(row_data[i])
+
         built_HBox_list.append(cell)
     
-    output_widget.append_display_data(widgets.HBox(built_HBox_list))
+    with output_widget:
+        display(widgets.HBox(built_HBox_list))
+        
+    time.sleep(0.5)
     
 
 # Hashed key output - Output
