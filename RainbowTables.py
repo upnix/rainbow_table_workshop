@@ -147,15 +147,6 @@ def hash_reduce(hash_digest, salt, key_length, allowable_chars, allow_smaller_ke
         
     return key_from_hash
 
-#def key_length_selection(allowable_char_num, max_key_length):
-#    keyspace_size = sum([allowable_char_num**i for i in range(1, max_key_length+1)])
-#    possible_key_lengths = [i for i in range(1, max_key_length+1)]
-
-    #weight = list()
-    #for i in range(1, max_key_length+1):
-    #    weight.append((allowable_char_num**i/keyspace_size)*100)
-        
-    #return random.choices(possible_key_lengths, weight)[0]
 
 def key_length_weights(allowable_char_num, max_key_length):
     keyspace_size = sum([allowable_char_num**i for i in range(1, max_key_length+1)])
@@ -462,16 +453,6 @@ class KeySpace:
                 relative_weights = key_length_weights(len(self.allowable_chars), self.key_size)
                 possible_key_lengths = [i for i in range(1, self.key_size+1)]
                 generated_key_length = random.choices(possible_key_lengths, relative_weights)[0]
-
-                #generated_key_length = key_length_selection(len(self.allowable_chars), self.key_size)
-                #total_keys = self.size()
-                #possible_key_lengths = [i for i in range(1, self.key_size+1)]
-                #weight = list()
-                #for i in range(1, self.key_size+1):
-                #    weight.append((self.key_size**i/total_keys)*100)
-#
-                #generated_key_length = random.choices(possible_key_lengths, weight)[0]
-
 
             for _ in range(0, generated_key_length):
                 key += random.choice(self.allowable_chars)
