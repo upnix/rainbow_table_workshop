@@ -1,4 +1,5 @@
 import ipywidgets as widgets
+from IPython.display import display
 from RainbowTables import HashSearch
 import time
 
@@ -141,7 +142,8 @@ clearHistory_callback(hashKey_history_OutputWidget)
 #######
 
 # Reverse the hash of a two digit PIN
-rvPIN_OutputWidget = widgets.Output(layout={'border': '1px solid black', 'width': '100%'})
+rvPIN_OutputWidget = widgets.Output(layout={'border': '1px solid black', 'width': '100%', 'height': '200px', 'overflow_y':'auto'})
+rvPIN_OutputWidget.box_id = f"output_widget_{id(rvPIN_OutputWidget)}"
 
 print_table_row(['Key to hash', 'Hash algorithm', 'Digest comparison'],
                 ['33%', '33%', '33%'],

@@ -4,6 +4,7 @@ import hashlib
 import sys
 import time
 import re
+import threading
 
 def descriptive_time(time_in_seconds):
     est_time = time_in_seconds
@@ -255,21 +256,59 @@ class HashSearch:
         else:
             return -1
 
-    def _instance_search_keyspace(self, digest_str):
-        return HashSearch.search_keyspace(self.keyspace, digest_str, self.hash_algorithm)
+    def _instance_search_keyspace(self, digest_str, update_interval=0):
+        HashSearch.search_keyspace(self.keyspace, digest_str, self.hash_algorithm, update_interval)
+        
+        #return HashSearch.search_keyspace(self.keyspace, digest_str, self.hash_algorithm)
 
     @staticmethod
-    def search_keyspace(keyspace, digest_str, hash_algo_str):
+    def search_keyspace(keyspace, digest_str, hash_algo_str, update_interval=0):
         hash_algo = HashSearch.get_hash_func(hash_algo_str)
-        key_hash_pair = list()
-        
-        def search(key, hash_digest, hash_algorithm, match_list):
-            if hash_digest == hash_algorithm(key):
-                match_list.append((key, hash_algorithm(key)))
-        
-        keyspace.keyspace_operation(lambda k: search(k, digest_str, hash_algo, key_hash_pair))
+        results = list()
+        search_iter = 0
+                
+        def search(key, hash_digest, hash_algorithm, search_results):
 
-        return key_hash_pair
+            if hash_digest == hash_algorithm(key):
+                search_results.append([key, hash_algorithm(key)])
+        
+        ks_operation_args = (lambda k: search(k,
+                                              digest_str,
+                                              hash_algo,
+                                              search_iter,
+                                              results),
+                             0,
+                             10000)
+        thread = threading.Thread(target=keyspace.keyspace_operation, args=ks_operation_args)
+        thread.start()
+        
+        search_start = time.time()
+        if update_interval > 0:
+            print("Printing updates")
+            results_index = 0
+            while True:
+                time.sleep(update_interval)
+                print("Update!")
+                if thread.is_alive():
+                    # Any digests found?
+                    if len(results) > results_index:
+                        print(str(int(time.time() - search_start)), "s: ", end='')
+                        print(results[results_index])
+                        results_index += 1
+                    
+                    print(str(int(time.time() - search_start)), "s: ", search_iter, "iterations")
+        else:
+            thread.join()
+            
+        print(str(int(time.time() - search_start)), "s: Search complete")
+#        keyspace.keyspace_operation(lambda k: search(k,
+#                                                     digest_str,
+#                                                     hash_algo,
+#                                                     updates,
+#                                                     time.time(),
+#                                                     update_interval)
+
+        #return updates
 
 
 class KeySpace:
@@ -542,28 +581,54 @@ class RainbowTable:
 
 
 class HTML_Table:
-    def __init__(self, headers = list(), rows = list()):
+    # `rows` should be a list of lists
+    def __init__(self, headers = list(), rows = list(), col_widths = None):
         self.header_row = headers
         self.table_content = rows
+        self.col_widths = col_widths
+
     
-    def generate_table(self):
+    def generate_table(self, border=False):
         i = 0
         k = 0
-        table_HTML = '<table><tr>'
+        
+        table_HTML = str()
+        if border:
+            table_HTML += f"""
+                <style>
+                .ht_{id(self)} table {{
+                  border-collapse: collapse;
+                }}
+                
+                .ht_{id(self)} td, .ht_{id(self)} th {{  
+                  border: 1px solid black;
+                  padding: 0px;
+                }}
+                </style>
+                """
+        if self.col_widths != None:
+            table_HTML += f'<table class="ht_{id(self)}" style="width:100%; line-height: 1.5"><colgroup>'
+            for width in self.col_widths:
+                table_HTML += f'<col style="width:{width}%">'
+            table_HTML += '</colgroup>'
+        else:
+            table_HTML += f'<table class="ht_{id(self)}"><tr>'
+            
         for cell in self.header_row:
-            table_HTML += '<th>' + cell + '</th>'
+            table_HTML += f'<th class="ht_{id(self)}">' + cell + '</th>'
         table_HTML += '</tr>'
         for row in self.table_content:
             i += 1
             table_HTML += '<tr>'
             for cell in row:
                 k += 1
-                table_HTML += '<td>' + cell + '</td>'
+                table_HTML += f'<td class="ht_{id(self)}">' + cell + '</td>'
             table_HTML += '</tr>'
 
         table_HTML += '</table>'
 
         return table_HTML
+
     
     def add_row(self, row_content, start_pos=0):
         new_row = [''] * len(self.header_row)
@@ -577,13 +642,16 @@ class HTML_Table:
     def emphasize(self, coord):
         new_content = '<b><i>' + self.table_content[coord[0]][coord[1]] + '</i></b>'
         self.table_content[coord[0]][coord[1]] = new_content
+
     
     def highlight(self, coord, color='yellow'):
         new_content = f'<span style="background-color: {color};">' + self.table_content[coord[0]][coord[1]] + '</span>'
         self.table_content[coord[0]][coord[1]] = new_content
+
         
     def remove_row(self, row):
         del self.table_content[row]
+
     
     def blackout_range(self, start_coord, end_coord):
         for row in range(start_coord[0], end_coord[0]+1):
@@ -599,9 +667,7 @@ class HTML_Table:
             for cell in range(start_coord[1], end_coord[1]+1):
                 new_content = self._remove_tags(self.table_content[row][cell])
                 self.table_content[row][cell] = new_content
-                
-                
 
-    
+
     def _remove_tags(self, html_string):
         return re.sub('<.*?>', '', html_string)
