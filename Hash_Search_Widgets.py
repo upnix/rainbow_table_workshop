@@ -6,6 +6,7 @@ import ipywidgets as widgets
 from IPython.display import display
 import string
 import sys
+import time
 
 ###
 # Adds a new row to the HTML "saved table"
@@ -46,6 +47,9 @@ def ts_saved_table_row(saved_tables):
 # Adds the only row to the HTML "dynamic table"
 ###
 def ts_dyn_table_row(keyspace, hash_algo):
+    if keyspace == None:
+        return ['No key space defined!', '']
+
     # Generate key space information string
     ks_info_str = "<b>Key size:</b> "
     if keyspace.allow_smaller_keys == True:
@@ -91,21 +95,30 @@ def ts_saved_search_callback(saved_tables, table_id, digest_text, status_output)
         
         for digest in digest_list:
             hashsearch = saved_tables[table_id-1][1]
+            print("\n-- Starting search of saved key:digest table --")
+            search_start = time.time()
             result = hashsearch.search_saved_keyspace(digest)
             print(result)
+            print(str(int(time.time() - search_start)), "s: Search complete")
             
 
 def ts_dyn_search_callback(digest_list, hash_algo, status_output):
     ks = ks_get_keyspace()
-    
+
     digest_list = digest_list.split("\n")
     
     with status_output:
-        for digest in digest_list:
-            hashsearch = HashSearch(ks, hash_algo)
-            #result = hashsearch.search_keyspace(digest, 10)
-            #print(result)
-            hashsearch.search_keyspace(digest, 10)
+        if ks == None:
+            print("** Please define a key space first! **")
+
+        elif len(digest_list[0]) <= 0:
+            print("** Please provide at least one hash digest! **")
+
+        else:
+            for digest in digest_list:
+                hashsearch = HashSearch(ks, hash_algo)
+                # hashsearch.search_keyspace(digest, 10)
+                hashsearch.search_keyspace(digest)
             
             
 def ts_hash_select_callback(html_table, hash_algo, table_output):
@@ -118,19 +131,30 @@ def ts_hash_select_callback(html_table, hash_algo, table_output):
         display(widgets.HTML(html_table.generate_table(border=True)))
         
 
-def ts_generate_callback(html_table, hash_algo, saved_tables, id_dropdown_widget, table_output):
+def ts_generate_callback(html_table, hash_algo, saved_tables, id_dropdown_widget, table_output, status_output):
     # Create the table
     ks = ks_get_keyspace()
-    hash_search = HashSearch(ks, hash_algo)
-    hash_search.save_hashed_keyspace()
-    
-    # Save the table
-    saved_tables.append([ks, hash_search])
-    
-    # Add information about the table to the HTML output
-    html_table.add_row(ts_saved_table_row(saved_tables))
 
-    table_output.clear_output()
+    with status_output:
+        if ks == None:
+            print("** You must define a key space before generating it **")
+            return
+
+        hash_search = HashSearch(ks, hash_algo)
+
+        print("\n-- Generating saved key:digest table --")
+        search_start = time.time()
+        hash_search.save_hashed_keyspace()
+        print(str(int(time.time() - search_start)), "s:", ks.size(), "key:digest pairs generated.")
+        print(str(int(time.time() - search_start)), "s: Table saved")
+
+        # Save the table
+        saved_tables.append([ks, hash_search])
+
+        # Add information about the table to the HTML output
+        html_table.add_row(ts_saved_table_row(saved_tables))
+
+        table_output.clear_output()
     with table_output:
         display(widgets.HTML(html_table.generate_table(border=True)))
 
@@ -299,7 +323,8 @@ ts_generate_Button.on_click(lambda b:
                                 ts_hash_select_DropdownWidget.value,
                                 digest_tables,
                                 ts_id_DropdownWidget,
-                                ts_saved_table_OutputWidget
+                                ts_saved_table_OutputWidget,
+                                ts_status_output
                                 ))
 
     
@@ -380,7 +405,7 @@ def hs_display():
   margin-bottom: -10px;
 }
 </style>
-<p style="line-height: 0;"><em><b>Define a key space</b></em> - In the first tab we're setting key
+<p style="line-height: 0;"><em><b>Define the key space</b></em> - In the first tab we're setting key
 restrictions that describe the types of keys allowed in the key space.</p>
 <ul class="dense-list">
     <li>Keep in mind that a key space that's too large is unlikely to be

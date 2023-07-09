@@ -164,7 +164,7 @@ def checkKey_search_ButtonWidget_callback(search_key, keyspace, output_widget):
             return
     
     # Lets find a key!
-    output_widget.append_stdout("Lets find a key!")
+    output_widget.append_stdout("A valid key for your key space!")
 
 
 checkKey_Output = widgets.Output(layout={'border': '1px solid black'})
@@ -230,7 +230,11 @@ def ks_get_OutputWidget():
     return ks_OutputWidget
 
 def ks_get_keyspace():
-    return KeySpace(
-        ks_define_len_SliderWidget.value,
-        ks_allowed_chars_SelectWidget.value,
-        ks_smaller_keys_CheckWidget.value)
+    # Return None if the key space has not been set
+    if len(ks_allowed_chars_SelectWidget.value) < 1:
+        return None
+    else:
+        return KeySpace(
+            ks_define_len_SliderWidget.value,
+            ks_allowed_chars_SelectWidget.value,
+            ks_smaller_keys_CheckWidget.value)

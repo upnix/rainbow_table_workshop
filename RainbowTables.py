@@ -267,38 +267,38 @@ class HashSearch:
         results = list()
         search_iter = 0
                 
-        def search(key, hash_digest, hash_algorithm, search_results):
+        def search(key, hash_digest, hash_algorithm, count, search_results):
 
             if hash_digest == hash_algorithm(key):
                 search_results.append([key, hash_algorithm(key)])
+                return False
         
         ks_operation_args = (lambda k: search(k,
                                               digest_str,
                                               hash_algo,
                                               search_iter,
-                                              results),
-                             0,
-                             10000)
+                                              results),)
         thread = threading.Thread(target=keyspace.keyspace_operation, args=ks_operation_args)
+        print("\n-- Starting on-the-fly search --")
         thread.start()
         
         search_start = time.time()
+
         if update_interval > 0:
-            print("Printing updates")
             results_index = 0
-            while True:
+            while thread.is_alive():
                 time.sleep(update_interval)
-                print("Update!")
-                if thread.is_alive():
-                    # Any digests found?
-                    if len(results) > results_index:
-                        print(str(int(time.time() - search_start)), "s: ", end='')
-                        print(results[results_index])
-                        results_index += 1
-                    
-                    print(str(int(time.time() - search_start)), "s: ", search_iter, "iterations")
+                # Any digests found?
+                while len(results) > results_index:
+                    print(str(int(time.time() - search_start)), "s: ", end='')
+                    print(results[results_index])
+                    results_index += 1
+
+                print(str(int(time.time() - search_start)), "s: ", search_iter, "iterations")
         else:
             thread.join()
+            for result in results:
+                print(result)
             
         print(str(int(time.time() - search_start)), "s: Search complete")
 #        keyspace.keyspace_operation(lambda k: search(k,
@@ -315,8 +315,7 @@ class KeySpace:
     PREBUILT_CHAR_LIST = list(['0-9 (10 chars)',
              'a-z (26 chars)',
              'A-Z (26 chars)',
-             'Special characters (32 chars)',
-             'Hexadecimal* (16 chars)'])
+             'Special characters (32 chars)'])
     
     key_operation_count = 0
     
@@ -432,24 +431,43 @@ class KeySpace:
         self.key_operation_count = 0
         if self.allow_smaller_keys:
             for i in range(0, self.key_size):
-                self._keyspace_operation(operation_func, str(), self.key_size-i, size)
+                if self._keyspace_operation(operation_func, str(), self.key_size-i, size) == False:
+                    break
                 
         else:
             self._keyspace_operation(operation_func, str(), self.key_size, size)
         
     def _keyspace_operation(self, operation_func, built_key, position, size):
-        # Loop through each allowed character in the key space.
+        # `position` is called in such a way that it counts *down*
+        # Loop through each allowed character in the key space, for whatever
+        # `position` in the string this method has been called for.
         for c in self.allowable_chars:
-            # Ensure we haven't called this function for every key position
+            # If `position > 1`, then we haven't reached the end of the
+            # built key yet.
             if position > 1:
-                if self._keyspace_operation(operation_func, built_key+c, position-1, size) == True:
-                    return True
+                # Call ourselves again
+                #pdb.set_trace()
+                if self._keyspace_operation(operation_func, built_key+c, position-1, size) == False:
+                    return False
 
+            # We're on the last character of this key, so the assumption is
+            # we're done - a key has been generated.
             elif position == 1:
-                if size != 0 and self.key_operation_count >= size:
-                    return True
-                operation_func(built_key+c)
+                # Keep track of how many complete keys we've handled
                 self.key_operation_count += 1
+
+                # Apply the supplied `operation_func()` to the built key.
+                # Save the return result for our next decision
+                #pdb.set_trace()
+                ofunc_return = operation_func(built_key+c)
+
+                # Quit if we've operated on the requested number of keys,
+                # or if `operation_func()` returned 'False'
+                if ( (size != 0 and self.key_operation_count >= size) or
+                    (ofunc_return == False) ):
+                    # 'False' should go up the recursive call chain, teling
+                    # everyone to break out of the `for()` loop
+                    return False
 
         
     def generate_keyspace(self, size = 0):
@@ -470,7 +488,6 @@ class KeySpace:
         
         def hash_operations(key, hash_algo, hashed_keyspace_dict):
             hashed_keyspace_dict[key] = hash_algo(key)
-            
         
         self.keyspace_operation(lambda k: hash_operations(k, hash_algorithm, hashed_keyspace), size)
         
