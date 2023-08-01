@@ -412,25 +412,32 @@ restrictions that describe the types of keys allowed in the key space.</p>
     searchable (at least in this notebook).</li>
     <li>You can see basic stats for your selected key space by clicking
     "Set key space", then going to the "Define the hash search" tab and looking
-    at the last row in the table.</li>
+    under the "Table stats" column, under the section "On-the-fly search".</li>
 </ul>
 <br />
 <p style="line-height: 0;"><em><b>Define the hash search</b></em> - In the second tab we're dealing with how we're going to search the key space that was just defined.</p>
 <ul class="dense-list">
-    <li>Each row of the table is a key space that can be selected to be searched.</li>
-    <ul class="dense-list"><li>The bottom row always represents the <em>currently selected</em> key space, and is not a saved table.</li>
-        <li>The key space and hash algorithm shown in the bottom table can be generated and saved by pressing the "Generate" button.</li>
-        <li>Any rows above the last row will be key spaces that have already been generated, hashed, and saved to a table.</li>
-    </ul>
-    <li><em>You select which row you want to search</em> by picking the corresponding ID from the drop-down menu.</li>
-    <li>The text box is where you paste in the hashes you wish to search, one per line.</li>
-    <li>Make sure the table from your selected row uses the same hashing algorithm as the hash digest you're trying to reverse.</li>
+    <li>The hash you wish to search for should be put into the text field near the bottom of the widget.</li>
+    <li><em>After defining a key space, you'll start under the section "On-the-fly search."</em></li>
+        <ul class="dense-list">
+            <li>The "Key space" column summarizes the key space you've defined.</li>
+            <li>The "Table stats" column provides estimations on how long it might take to search - or to generate and save - the defined key space.</li>
+            <li>"Hash algorithm" is the algorithm that will be applied to generated keys.</li>
+            <li>The "Generate" button will systematically go through all possible key space keys, hashing each, and save the result to a Python `dict()`, which you can search later.</li>
+            <li>The "Search" button does the same as "Generate," but will stop as soon as the target hash is seen and won't save any generated keys or hashes.</li>
+        </ul>
+    <li><em>Searching a saved Key:Digest table</em></li>
+        <ul class="dense-list">
+            <li>You'll need to have generated at least one table. Make sure you've chosen the correct hash algorithm.</li>
+            <li>Select the table you wish to search using the drop-down under the heading "Saved Key:Digest tables"</li>
+            <li>With a hash digest to search for in the bottom text box, click the "Search" button next to the ID drop-down.</li>
+        </ul>
+    <li>Status information will be printed at the very bottom of the widget.</li>
 </ul>
 <br />
 <p><em><b>Generating your own digests to reverse</b></em> -</p>
-<p style="line-height: 1.5;">Use the hashing widget that's in the "Starting
-notebook" (or, the same widget thats near the top of this notebook) to generate
-your own hash digests, then reverse them here.</p>
+<p style="line-height: 1.5;">Use the hashing widget that's in section 2 to generate
+your own hash digests. Copy and paste the resulting hash here to reverse.</p>
     """
     
     walkthrough_str = """
@@ -439,9 +446,9 @@ your own hash digests, then reverse them here.</p>
   margin-bottom: -10px;
 }
 </style>
-<p style="line-height: 1.5;">We're going to reverse the first hash digest from
-in the first row from the table above. We're told the hash digest was generated
-using a key that was 3 characters in length and consisted of the characters 0
+<p style="line-height: 1.5;">We're going to reverse the hash digest in the
+first row of the table above. We're told the hash digest was generated using a key
+that was 3 characters in length and consisted of the characters 0
 through 9. So...</p><br />
 <p style="line-height: 0;"><b>In the first tab, "Define the key space"...</b></p>
 <ol class="dense-list">
@@ -454,37 +461,37 @@ through 9. So...</p><br />
 <br />
 <p style="line-height: 0;"><b>In the second tab, "Define the hash search"...</b></p>
 <ol class="dense-list">
-    <li>Copy the Shorty Hash digest in the table above: `17d63b`</li>
+    <li>Copy the Shorty Hash digest in the table above: <pre>17d63b</pre></li>
     <li>Paste this hash digest into the textbox, under where it says "Enter
     hash digests to search for"</li>
-    <li>Under "Hash algo.", change the hashing algorithm to "Shorty hash."</li>
+    <li>Under "Hash algorithm", change the hashing algorithm to "Shorty hash."</li>
     <ol class="dense-list">
-        <li>In the "Size" column you'll see information about the search you're
+        <li>In the "Table stats" column you'll see information about the search you're
         about to attempt.</li>
     </ol>
     <li>You can now do one of two things (or both):</li>
     <ol class="dense-list">
-        <li><em>Search</em></li>
+        <li><em>On-the-fly search</em></li>
             <ol class="dense-list">
                 <li>Press the "Search" button.</li>
-                <li>This will generated keys from the key space you defined, hash
-                each key, then compare the resulting hash digest to the digest you
-                provided.</li>
+                <li>This will generate each key from the defined key space, hash each
+                key, then compare the resulting hash digest to the digest you provided.</li>
                 <li>Once the hash digest is found all searching will stop. None
                 of the keys or hash digests are saved.</li>
             </ol>
-        <li><em>Generate *then* search</em></li>
+        <li><em>Generate a key:digest table, then< search</em></li>
             <ol class="dense-list">
                 <li>Press the "Generate" button.</li>
                 <li>This will generate keys from the key space you defined, hash
                 each key, <em>and then save that key:digest pair to a table</em>.</li>
-                <li>Once finished, you should now have a new row in the table,
-                with details of the hashed key space you just saved.</li>
+                <li>Once finished, you should have a new row in the table under the
+                heading "Saved Key:Digest tables".</li>
                 <li>Select the table you just generated using the ID drop down menu
-                (you'll probably want the ID of '0').</li>
-                <li>Now click "Search."</li>
+                (you'll probably want the ID of '1').</li>
+                <li>Click the "Search" button next to the ID drop down.</li>
                 <li>This will search for your supplied hash digest in the table
-                that was saved. No key generation of hashing will take place.</li>
+                that was previously generated and saved. No key generation or hashing
+                is necessary, since those tasks were previously completed.</li>
             </ol>
     </ol>
 </ol>
