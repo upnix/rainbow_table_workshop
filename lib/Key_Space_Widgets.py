@@ -193,7 +193,7 @@ checkKey_search_ButtonWidget.on_click(lambda b:
 # Generated keys tab layout
 checkKey_tab_layout_HBoxWidget = widgets.HBox([
     widgets.VBox([
-        widgets.Label(value='What key would you like to search the key space for?'),
+        widgets.Label(value='Enter a key to confirm whether it should exist in your key space.'),
         checkKey_list_TextWidget,
         checkKey_search_ButtonWidget
     ]),

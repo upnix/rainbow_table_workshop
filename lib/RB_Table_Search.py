@@ -3,7 +3,6 @@ from Key_Space_Widgets import ks_get_keyspace
 import ipywidgets as widgets
 import random
 
-search_direction = 'rtl'
 
 def bad_hash_reduce(hash_digest, salt, key_length, allowable_chars, allow_smaller_keys=False):
     new_key = str()
@@ -18,19 +17,24 @@ def bad_hash_reduce(hash_digest, salt, key_length, allowable_chars, allow_smalle
         
     return new_key[:key_length]
 
-def ts_targetHash_callback(button, rb, str_to_find, direction, int_widget, table_widget, status_Output):
-    if len(str_to_find) <= 0:
+def ts_search_callback(button, rb, digest_to_find, key_to_find, int_widget, table_widget, status_Output):
+    if len(digest_to_find) <= 0:
         with status_Output:
-            print("** Key/digest field is empty! **")
+            print("** At least a hash digest is needed to begin searching. **")
         return
 
-    cur_str_to_find = str_to_find
+    if len(key_to_find) > 0:
+        cur_str_to_find = key_to_find
+    else:
+        cur_str_to_find = digest_to_find
+
     iteration_attempt = int_widget.value
     int_widget.value += 1
 
     rb.html_table.add_row(list())
     
-    if direction == 'rtl':
+    # if direction == 'rtl':
+    if len(key_to_find) == 0:
         col_loc = (len(rb.html_table.header_row)-1)-4*iteration_attempt
     else:
         col_loc = 0
@@ -38,7 +42,8 @@ def ts_targetHash_callback(button, rb, str_to_find, direction, int_widget, table
     rb.html_table.table_content[-1][col_loc] = '<b>' + cur_str_to_find + '</b>'
 
     for i in range(0, iteration_attempt):
-        if direction == 'rtl':
+        # if direction == 'rtl':
+        if len(key_to_find) == 0:
             next_val = rb.reduction_func(cur_str_to_find)
         else:
             next_val = rb.hash_func(cur_str_to_find)
@@ -52,7 +57,7 @@ def ts_targetHash_callback(button, rb, str_to_find, direction, int_widget, table
 
         rb.html_table.table_content[-1][col_loc+1] = '=>'
 
-        if direction == 'rtl':
+        if len(key_to_find) == 0:
             cur_str_to_find = rb.hash_func(next_val)
         else:
             cur_str_to_find = rb.reduction_func(next_val)
@@ -63,25 +68,38 @@ def ts_targetHash_callback(button, rb, str_to_find, direction, int_widget, table
         rb.html_table.table_content[-1][col_loc] = cur_str_to_find
 
 
-    if direction == 'ltr':
+    if len(key_to_find) > 0:
         rb.html_table.table_content[-1][col_loc+1] = '=>'
         rb.html_table.table_content[-1][col_loc+2] = rb.hash_func(cur_str_to_find)
     key_found = False
-    #if direction == 'rtl':
-    for i in range(0, len(rb.table)):
-        if cur_str_to_find in rb.table[i][-1]:
-            rb.html_table.highlight([i, len(rb.html_table.header_row)-1])
-            rb.html_table.highlight([len(rb.html_table.table_content)-1, len(rb.html_table.header_row)-1])
-            key_found = i+1
+    if len(key_to_find) == 0:
+        for i in range(0, len(rb.table)):
+            if len(key_to_find) == 0 and cur_str_to_find in rb.table[i][-1]:
+                rb.html_table.highlight([i, len(rb.html_table.header_row)-1])
+                rb.html_table.highlight([len(rb.html_table.table_content)-1, len(rb.html_table.header_row)-1])
+                button.disabled = True
+                status_Output.append_stdout(f'A matching hash digest has been found in the last column of row {i+1}.\n{iteration_attempt} reduction iterations of "hash" => "key" => "hash" were necessary to find the match.\n')
+                key_found = i+1
+    else:
+        if digest_to_find == rb.hash_func(cur_str_to_find):
+            button.disabled = True
+            rb.html_table.highlight([len(rb.html_table.table_content)-1, col_loc])
+            status_Output.append_stdout(f'\nA MATCHING KEY HAS BEEN FOUND!! {cur_str_to_find} was the key that generated the hash {digest_to_find}\n')
+            status_Output.append_stdout(f"(I'm sorry for yelling, but that's very exciting!)\n")
+
     # cur_str_to_find = target_digest
     table_widget.value = rb.html_table.generate_table()
-    if key_found:
-        button.disabled = True
-        status_Output.append_stdout(f'\nA matching hash digest has been found in the last column of row {key_found}.\n{iteration_attempt} reduction iterations of "hash" => "key" => "hash" were necessary to find the match.\n')
-        return
+    # if key_found:
+        # button.disabled = True
+        # status_Output.append_stdout(f'\nA matching hash digest has been found in the last column of row {key_found}.\n{iteration_attempt} reduction iterations of "hash" => "key" => "hash" were necessary to find the match.\n')
+        # return
     #else:
     #    table_widget.value = rb.html_table.generate_table()
     #    status_Output.append_stdout("Haven't sorted this out yet.")
+
+def ts_key_change(c, int_widget, search_button):
+    int_widget.value = 0
+    search_button.disabled = False
 
 
 def ts_table_blackout_callback(button, num_rows, html_table, table_widget):
@@ -100,34 +118,18 @@ def ts_table_blackout_callback(button, num_rows, html_table, table_widget):
     table_widget.value = rb.html_table.generate_table()
 
 
-def ts_reset_callback(rb, text_widget, int_widget, blackout_button, search_button, direction_radio, table_widget, status_Output):
+def ts_reset_callback(rb, digest_widget, key_widget, int_widget, blackout_button, search_button, table_widget, status_Output):
     rb.display_table(table_widget, 10)
-    text_widget.value = ''
+    digest_widget.value = ''
+    key_widget.value = ''
     int_widget.value = 0
     blackout_button.description='Turn on'
     search_button.disabled = False
-    direction_radio.value = 'Start from hash (right-to-left)'
     status_Output.clear_output()
     
 
-def ts_direction_callback(radio_widget, text_widget, int_widget, search_button):
-    global search_direction
-    if radio_widget.new == 'Start from key (Left-to-right)':
-        search_direction = 'ltr'
-        text_widget.placeholder='Plain-text key'
-    else:
-        search_direction = 'rtl'
-        text_widget.placeholder='Hash digest to find'
-    
-    int_widget.value = 0
-    search_button.disabled = False
-
 # Make the Rainbow table
-ks = ks_get_keyspace()
-if ks == None:
-    print("** You haven't selected a key space! A default one has been selected for you. **")
-
-    ks = KeySpace(5, ['0-9 (10 chars)'], True)
+ks = KeySpace(5, ['A-Z (26 chars)'], True)
 
 rb = RainbowTable(ks, 5, 10)
 
@@ -139,25 +141,19 @@ ts_status_Output = widgets.Output(layout={'border': '1px solid black'})
 ts_col_BoundedInt = widgets.BoundedIntText(value = 0, disabled=True)
 ts_col_BoundedInt.layout.width = '100px'
 
-ts_target_Text = widgets.Text(placeholder='Hash digest to find')
-
-ts_direction_Radio = widgets.RadioButtons(
-    options=['Start from key (Left-to-right)', 'Start from hash (right-to-left)'],
-    value='Start from hash (right-to-left)')
-
-ts_direction_Radio.observe(lambda b: ts_direction_callback(b,
-                                                           ts_target_Text,
-                                                           ts_col_BoundedInt,
-                                                           ts_targetHash_Button), names='value')
+ts_digest_Text = widgets.Text(placeholder='Hash digest to find')
+ts_key_Text = widgets.Text(placeholder='Starting key for search')
+ts_key_Text.observe(
+    lambda c: ts_key_change(c, ts_col_BoundedInt, ts_search_Button),
+    names='value')
 
 
-
-ts_targetHash_Button = widgets.Button(description='Search')
-ts_targetHash_Button.on_click(lambda b: ts_targetHash_callback(
+ts_search_Button = widgets.Button(description='Search')
+ts_search_Button.on_click(lambda b: ts_search_callback(
     b,
     rb,
-    ts_target_Text.value,
-    search_direction,
+    ts_digest_Text.value,
+    ts_key_Text.value,
     ts_col_BoundedInt,
     table_widget,
     ts_status_Output))
@@ -170,11 +166,11 @@ ts_table_blackout_Button.on_click(lambda b: ts_table_blackout_callback(b, rb.tab
 ts_reset_Button = widgets.Button(description='Reset')
 ts_reset_Button.on_click(lambda b: ts_reset_callback(
     rb,
-    ts_target_Text,
+    ts_digest_Text,
+    ts_key_Text,
     ts_col_BoundedInt,
     ts_table_blackout_Button,
-    ts_targetHash_Button,
-    ts_direction_Radio,
+    ts_search_Button,
     table_widget,
     ts_status_Output)
 )
@@ -268,7 +264,8 @@ f7sFY9s2RciGMLi290NwymD03HjBfJ7uqPs780HyzNsE92ksah2IlNkq4fWQWVi55SgueizSXL44E3Xd
         widgets.VBox([
             widgets.Label(value='Key/digest to start your search from',
                           style=dict(text_decoration='underline')),
-            ts_target_Text
+            ts_digest_Text,
+            ts_key_Text,
         ], layout=table_layout),
         widgets.VBox([
             widgets.Label(value='Reduce/Hash iterations', style=dict(text_decoration='underline')),
@@ -278,24 +275,21 @@ f7sFY9s2RciGMLi290NwymD03HjBfJ7uqPs780HyzNsE92ksah2IlNkq4fWQWVi55SgueizSXL44E3Xd
             widgets.Label(value='Blackout center of table', style=dict(text_decoration='underline')),
             ts_table_blackout_Button
         ], layout=table_layout),
-        widgets.VBox([ts_targetHash_Button, ts_reset_Button], layout=table_layout)
-    ]),
-        ts_direction_Radio)
+        widgets.VBox([ts_search_Button, ts_reset_Button], layout=table_layout)
+    ]))
 
 
 def display_rb_table():
     display(widgets.VBox([
         table_widget,
         ts_status_Output]))
-    
+
     # Display the Rainbow table
     rb.display_table(table_widget, 10)
 
 
 def display_bad_reduction_table():
-    ks = ks_get_keyspace()
-    if ks == None:
-        ks = KeySpace(5, ['0-9 (10 chars)'], True)
+    ks = KeySpace(5, ['A-Z (26 chars)'], True)
 
     bad_rb = RainbowTable(ks, 5, 10, bad_hash_reduce)
     bad_table_widget = widgets.HTML()
